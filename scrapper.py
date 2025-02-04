@@ -3,7 +3,7 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
-# Website to scrape
+
 URL = "https://www.thenational.academy/pupils/years"
 
 conn = mysql.connector.connect(
