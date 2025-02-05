@@ -2,8 +2,9 @@ import mysql.connector
 import requests
 import json
 from bs4 import BeautifulSoup
+import concurrent.futures
 
-
+# Website to scrape
 URL = "https://www.thenational.academy/pupils/years"
 
 conn = mysql.connector.connect(
@@ -170,19 +171,6 @@ def get_lesson_names(url):
         print(f"Error fetching {url}: {e}")
         return []
     
-
-# def get_exam_lesson_names(exam_lesson_url):
-#     try:
-#         response = requests.get(exam_lesson_url)
-#         response.raise_for_status()
-#         soup = BeautifulSoup(response.text, "html.parser")
-#         lesson_names = [item.find_all("div")[3].get_text(strip=True) for item in
-#                       soup.find_all("a", href=lambda href: href and '/pupils/programmes/' in href) if
-#                       len(item.find_all("div")) > 2]
-#         return lesson_names
-#     except requests.RequestException as e:
-#         print(f"Error fetching {exam_lesson_url}: {e}")
-#         return []
     
 
 def save_year_urls(urls):
@@ -191,12 +179,12 @@ def save_year_urls(urls):
             full_url = "https://www.thenational.academy" + url
             name = f"year{index}"
             try:
-                # cursor.execute("INSERT IGNORE INTO years(name,url) VALUES (%s, %s)", (name, full_url,))
-                # conn.commit()
-                if index == 10 or index == 11:
-                    sub_urls = get_sub_urls(full_url)
-                    subject_names = get_subject_names(full_url)
-                    save_subject_urls(sub_urls, subject_names, index)
+                cursor.execute("INSERT IGNORE INTO years(name,url) VALUES (%s, %s)", (name, full_url,))
+                conn.commit()
+
+                sub_urls = get_sub_urls(full_url)
+                subject_names = get_subject_names(full_url)
+                save_subject_urls(sub_urls, subject_names, index)
                 index += 1
             except mysql.connector.Error as err:
                 print(f"Error inserting {url}: {err}")
@@ -214,8 +202,8 @@ def save_subject_urls(subject_urls, subject_names, year_id):
             subject_name = subject_names[index]
 
             try:
-                # cursor.execute("INSERT INTO subjects (year_id,subject_name,url) VALUES (%s,%s,%s)", (year_id, subject_name, subject_url,))
-                # conn.commit()
+                cursor.execute("INSERT INTO subjects (year_id,subject_name,url) VALUES (%s,%s,%s)", (year_id, subject_name, subject_url,))
+                conn.commit()
 
                 subject_id = cursor.lastrowid
                 if year_id == 10 or year_id == 11:
@@ -226,10 +214,10 @@ def save_subject_urls(subject_urls, subject_names, year_id):
                         unit_urls = get_sub_urls(subject_url)
                         unit_names = get_unit_names(subject_url,year_id)
                     save_unit_urls(subject_id,unit_urls, unit_names, year_id)
-                # else:
-                #     unit_urls = get_sub_urls(subject_url)
-                #     unit_names = get_unit_names(subject_url,year_id)
-                #     save_unit_urls(subject_id,unit_urls, unit_names, year_id)
+                else:
+                    unit_urls = get_sub_urls(subject_url)
+                    unit_names = get_unit_names(subject_url,year_id)
+                    save_unit_urls(subject_id,unit_urls, unit_names, year_id)
             except mysql.connector.Error as err:
                 print(f"Error inserting {url}: {err}")
 
@@ -294,7 +282,7 @@ def main():
     create_db()
     year_urls = get_year_urls(URL)
     if year_urls:
-        # save_year_urls(year_urls)
+        save_year_urls(year_urls)
         cursor.execute("SELECT url FROM lessons WHERE id > 17204")
         lesson_urls = [row[0] for row in cursor.fetchall()]
         save_lesson_page_content(lesson_urls)
